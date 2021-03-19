@@ -1,16 +1,45 @@
-# This is a sample Python script.
+import requests
+from twilio.rest import Client
+import os
+from twilio.http.http_client import TwilioHttpClient
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+OWM_Endpoints = "https://home.openweathermap.org/data/2.5/onecall"
+api_key = os.environ.get("OWM_API_Key")
 
+# proxy_client = TwilioHttpClient()
+# proxy_client.session.proxies =  {'https': os.environ['http_proxy']}
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+account_sid = "AC7c357bb2c70d78979800071781270f39"
+auth_token = os.environ.get("AUTH_TOKEN")
 
+weather_params = {
+    "lat": 27.2046,
+    "lon": 77.4977,
+    "appid": api_key,
+    "exclude": "current ,minutely, daily"
+}
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+response = requests.get(OWM_Endpoints, params=weather_params)
+response.raise_for_status()
+weather_data = response.json()
+weather_slice = weather_data["hourly"][:12]
+for hour_data in weather_slice:
+    condition_code = hour_data["weather"][0]["id"]
+    if int(condition_code) < 700:
+        will_rain = True
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+if will_rain:
+    proxy_client = TwilioHttpClient()
+    proxy_client.session.proxies = {'https': os.environ['http_proxy']}
+
+    client = Client(account_sid, auth_token, http_client=proxy_client)
+    message = client.messages \
+        .create(
+        body="It May Rain Please Be Aware....",
+        from_="+918898084899",
+        to="+916678045688"
+    )
+
+    print(message.status)
+
+# print(weather_data["hourly"][0]["weather"][0]["id"])
